@@ -1,4 +1,6 @@
 # Ocean Surface Simulation
+A simple ocean surface simulation based on J. Tessendorf's paper. This is written in a heavily stripped down version of my engine.
+
 ![water-gif](./docs/water.gif)
 
 # Controls
