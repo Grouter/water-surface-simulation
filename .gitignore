@@ -1,0 +1,13 @@
+.vs
+.vscode
+.idea
+
+*.sln
+
+*.png~
+
+build/
+
+assets/*.txt
+
+imgui.ini
