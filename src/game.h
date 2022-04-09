@@ -43,10 +43,10 @@ struct GameState {
     u32 resolution = 256;
 
     f32 amplitude = 8.0f;
-    f32 wind_speed = 20.0f;
-    f32 length = 300.0f;
-    f32 lambda = -0.5f;
-    f32 smoothing = 1.0f;
+    f32 wind_speed = 32.0f;
+    f32 length = 300.0f;    // How much is sampled on the quad (zoom on the displacement)
+    f32 lambda = -1.0f;
+    f32 smoothing = 2.0f;
     Vector2 wind_direction = make_vector2(1.0f, 0.0f);
 
     StaticArray<Vector2> h0tk = {};

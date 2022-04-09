@@ -59,6 +59,20 @@ LRESULT CALLBACK win32_window_callback(HWND window, UINT message, WPARAM w_param
         case WM_MOUSEMOVE: {
             input_state->mouse.x = GET_X_LPARAM(l_param);
             input_state->mouse.y = GET_Y_LPARAM(l_param);
+
+            if (input_state->mouse_locked) {
+                {
+                    POINT pt;
+                    pt.x = (i32)game_state->window_width_pixels  / 2;
+                    pt.y = (i32)game_state->window_height_pixels / 2;
+                    ClientToScreen(window, &pt);
+
+                    SetCursorPos(pt.x, pt.y);
+                }
+
+                input_state->mouse_old.x = (i32)game_state->window_width_pixels  / 2;
+                input_state->mouse_old.y = (i32)game_state->window_height_pixels / 2;
+            }
         } break;
 
         case WM_LBUTTONDOWN: {
@@ -202,6 +216,10 @@ internal void win32_create_window(HINSTANCE instance, WNDPROC callback, int show
 internal void platform_quit_program() {
     HWND window_handle = GetActiveWindow();
     PostMessage(window_handle, WM_CLOSE, 0, 0);
+}
+
+internal void platform_show_cursor(bool show) {
+    ShowCursor(show);
 }
 
 // To initialzie GL extensions, we need to create a fake window

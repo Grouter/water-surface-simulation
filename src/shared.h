@@ -19,6 +19,8 @@ global RenderState *render_state;
 
 internal void game_handle_key_down(KeyInput key);
 internal void update_and_render_game(f32 delta_time);
+
 internal void platform_quit_program();
+internal void platform_show_cursor(bool show);
 
 #endif

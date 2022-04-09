@@ -99,38 +99,40 @@ internal void on_window_resize(u32 pixel_width, u32 pixel_height) {
 
 internal void update_and_render_game(f32 dt) {
     // Camera move
-    {
-        Vector3 move_direction = {};
+    // {
+    //     Vector3 move_direction = {};
 
-        if (input_state->wasd_pressed[0]) { // W
-            if (input_state->shift_pressed) move_direction.z += 1;
-            else move_direction.y -= 1;
-        }
+    //     if (input_state->wasd_pressed[0]) { // W
+    //         if (input_state->shift_pressed) move_direction.z += 1;
+    //         else move_direction.y -= 1;
+    //     }
 
-        if (input_state->wasd_pressed[2]) { // S
-            if (input_state->shift_pressed) move_direction.z -= 1;
-            else move_direction.y += 1;
-        }
+    //     if (input_state->wasd_pressed[2]) { // S
+    //         if (input_state->shift_pressed) move_direction.z -= 1;
+    //         else move_direction.y += 1;
+    //     }
 
-        if (input_state->wasd_pressed[1]) { // A
-            move_direction.x += 1;
-        }
+    //     if (input_state->wasd_pressed[1]) { // A
+    //         move_direction.x += 1;
+    //     }
 
-        if (input_state->wasd_pressed[3]) { // D
-            move_direction.x -= 1;
-        }
+    //     if (input_state->wasd_pressed[3]) { // D
+    //         move_direction.x -= 1;
+    //     }
 
-        move_direction = normalized(move_direction);
+    //     move_direction = normalized(move_direction);
 
-        f32 move_speed = 5.0f * dt;
+    //     f32 move_speed = 5.0f * dt;
 
-        Vector3 move_delta = {};
-        move_delta.x = move_direction.x * move_speed;
-        move_delta.y = move_direction.y * move_speed;
-        move_delta.z = move_direction.z * move_speed;
+    //     Vector3 move_delta = {};
+    //     move_delta.x = move_direction.x * move_speed;
+    //     move_delta.y = move_direction.y * move_speed;
+    //     move_delta.z = move_direction.z * move_speed;
 
-        translate(game_state->camera.transform, move_delta.x, move_delta.y, move_delta.z);
-    }
+    //     translate(game_state->camera.transform, move_delta.x, move_delta.y, move_delta.z);
+    // }
+    camera_handle_input(&game_state->camera, dt);
+    camera_update(&game_state->camera);
 
     // Draw axes
     {

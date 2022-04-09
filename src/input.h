@@ -16,8 +16,11 @@ struct KeyInput {
 };
 
 struct InputState {
-    bool mouse_input_blocked;
-    bool keyboard_input_blocked;
+    bool16 mouse_input_blocked;
+    bool16 keyboard_input_blocked;
+
+    bool32 mouse_locked;
+
     Vector2i mouse;
     Vector2i mouse_delta;
     Vector2i mouse_old;

@@ -11,6 +11,10 @@ internal void handle_key_down(u8 scan_code, u16 virtual_code, bool alt_down) {
         platform_quit_program();
         return;
     }
+    else if (virtual_code == VK_F1) {
+        input_state->mouse_locked = !input_state->mouse_locked;
+        platform_show_cursor(!input_state->mouse_locked);
+    }
 
     switch (virtual_code) {
         case 'W' : {

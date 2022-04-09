@@ -23,6 +23,11 @@ union Vector3 {
         f32 y;
         f32 z;
     };
+    struct {
+        f32 pitch;
+        f32 yaw;
+        f32 roll;
+    };
     f32 data[3];
 };
 
