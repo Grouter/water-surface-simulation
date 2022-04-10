@@ -192,7 +192,7 @@ internal void win32_create_window(HINSTANCE instance, WNDPROC callback, int show
     *window_handle = CreateWindowEx(
         0,
         window_class.lpszClassName,
-        TEXT("Window"),
+        TEXT("Water"),
         WS_OVERLAPPEDWINDOW,
         w_rect.left, w_rect.top,
         w_rect.right - w_rect.left, w_rect.bottom - w_rect.top,

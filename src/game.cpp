@@ -5,6 +5,7 @@ internal void init_game() {
     game_state->camera.rotation.y = 90.0f;
     game_state->camera.position.y = 10.0f;
     game_state->camera.position.z = 10.0f;
+    game_state->camera.rotation.x = 30.0f;
 
     // Generate displacement texture
     {
