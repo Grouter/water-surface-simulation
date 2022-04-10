@@ -16,6 +16,9 @@
 #define STB_TRUETYPE_IMPLEMENTATION
 #define STBTT_STATIC
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_STATIC
+
 #define IMGUI_IMPL_OPENGL_LOADER_CUSTOM
 
 #include <windows.h>
@@ -40,6 +43,7 @@
 
 #include <stb_rect_pack.h>
 #include <stb_truetype.h>
+#include <stb_image_write.h>
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_win32.h>

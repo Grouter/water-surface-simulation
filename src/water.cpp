@@ -1,24 +1,39 @@
+internal Vector2 complex_mult(Vector2 a, Vector2 b) {
+    Vector2 result;
+
+    result.x = (a.x * b.x) - (a.y * b.y);
+    result.y = (a.y * b.x) + (a.x * b.y);
+
+    return result;
+}
+
 internal f32 phillips(Vector2 k) {
     f32 wind_speed = game_state->wind_speed;
     f32 smoothing = game_state->smoothing;
     f32 amplitude = game_state->amplitude;
     Vector2 wind_direction = game_state->wind_direction;
 
-    f32 l = wind_speed * wind_speed / GRAVITY;
+    f32 L = wind_speed * wind_speed / GRAVITY;
 
     f32 k_length = length(k);
-    if (k_length < 0.0001f) k_length = 0.0001f;
+    if (k_length < 0.0001f) return 0.0f;
+
     f32 k_length_2 = k_length * k_length;
 
-    f32 k_dot_wind_dir = dot(normalized(k), normalized(wind_direction));
-
-    f32 pow_dt = k_dot_wind_dir * k_dot_wind_dir * k_dot_wind_dir * k_dot_wind_dir;
+    f32 k_dot_wind = dot(normalized(k), normalized(wind_direction));
+    f32 k_dot_wind_2 = k_dot_wind * k_dot_wind;
 
     return
         amplitude *
-        expf(-1.0f / (k_length_2 * l * l)) / (k_length_2 * k_length_2) *
-        pow_dt *
-        expf(-(k_length_2) * smoothing * smoothing);
+        (
+            expf(-1.0f / (k_length_2 * L * L))
+            /
+            (k_length_2 * k_length_2)
+        )
+        *
+        k_dot_wind_2
+        *
+        expf(-k_length_2 * smoothing * smoothing);
 }
 
 internal Vector2 h0_tilde(Vector2 k) {
@@ -27,70 +42,27 @@ internal Vector2 h0_tilde(Vector2 k) {
     gauss_pick.y = game_state->normal_dist(game_state->random_engine);
 
     f32 p = phillips(k);
+    f32 sqrt_of_2 = 1.4142135623730950488f;
+    f32 coef = 1.0f / sqrt_of_2;
 
-    f32 coef = (1.0f / sqrtf(2.0f)) * sqrtf(p);
-
-    Vector2 result = gauss_pick * coef;
+    Vector2 result = gauss_pick * coef * sqrtf(p);
     return result;
 }
 
 internal void water_precalculate() {
-    if (game_state->length <= 0.0f) game_state->length = 1.0f;
+    if (game_state->length < 1.0f) game_state->length = 1.0f;
 
     u32 resolution = game_state->resolution;
+    u32 resolution_squared = resolution * resolution;
 
-    // Allocations
-    {
-        if (game_state->h0tk.data) _free_from_memory_arena(&game_state->transient_memory, game_state->h0tk.data);
-        if (game_state->h0tmk.data) _free_from_memory_arena(&game_state->transient_memory, game_state->h0tmk.data);
-        if (game_state->h_tilde.data) _free_from_memory_arena(&game_state->transient_memory, game_state->h_tilde.data);
-        if (game_state->h_tilde_i.data) _free_from_memory_arena(&game_state->transient_memory, game_state->h_tilde_i.data);
-        if (game_state->dx.data) _free_from_memory_arena(&game_state->transient_memory, game_state->dx.data);
-        if (game_state->dx_i.data) _free_from_memory_arena(&game_state->transient_memory, game_state->dx_i.data);
-        if (game_state->dz.data) _free_from_memory_arena(&game_state->transient_memory, game_state->dz.data);
-        if (game_state->dz_i.data) _free_from_memory_arena(&game_state->transient_memory, game_state->dz_i.data);
+    game_state->h_tilde.clear();
+    game_state->dx.clear();
+    game_state->dz.clear();
 
-        u32 resulution_squared = resolution * resolution;
-
-        allocate_array_from_block(game_state->h0tk, resulution_squared, &game_state->transient_memory);
-        allocate_array_from_block(game_state->h0tmk, resulution_squared, &game_state->transient_memory);
-        allocate_array_from_block(game_state->h_tilde, resulution_squared, &game_state->transient_memory);
-        allocate_array_from_block(game_state->h_tilde_i, resulution_squared, &game_state->transient_memory);
-        allocate_array_from_block(game_state->dx, resulution_squared, &game_state->transient_memory);
-        allocate_array_from_block(game_state->dx_i, resulution_squared, &game_state->transient_memory);
-        allocate_array_from_block(game_state->dz, resulution_squared, &game_state->transient_memory);
-        allocate_array_from_block(game_state->dz_i, resulution_squared, &game_state->transient_memory);
-    }
-
-    game_state->h_tilde.length = game_state->h_tilde.capacity;
-    game_state->dx.length = game_state->dx.capacity;
-    game_state->dz.length = game_state->dz.capacity;
-
-    // FFTW
-    {
-        game_state->p_h_tilde = fftwf_plan_dft_2d(
-            resolution,
-            resolution,
-            (fftwf_complex*)(game_state->h_tilde_i.data),
-            (fftwf_complex*)(game_state->h_tilde.data),
-            FFTW_BACKWARD, FFTW_ESTIMATE
-        );
-
-        game_state->p_dx = fftwf_plan_dft_2d(
-            resolution,
-            resolution,
-            (fftwf_complex*)(game_state->dx_i.data),
-            (fftwf_complex*)(game_state->dx.data),
-            FFTW_BACKWARD, FFTW_ESTIMATE
-        );
-
-        game_state->p_dz = fftwf_plan_dft_2d(
-            resolution,
-            resolution,
-            (fftwf_complex*)(game_state->dz_i.data),
-            (fftwf_complex*)(game_state->dz.data),
-            FFTW_BACKWARD, FFTW_ESTIMATE
-        );
+    for (u32 i = 0; i < resolution_squared; i++) {
+        game_state->h_tilde.add(V2_ZERO);
+        game_state->dx.add(V2_ZERO);
+        game_state->dz.add(V2_ZERO);
     }
 
     f32 length = game_state->length;
@@ -99,10 +71,10 @@ internal void water_precalculate() {
     game_state->h0tmk.clear();
 
     for (u32 m = 0; m < resolution; m++) {
-        f32 kz = TWO_PI * ((f32)m - resolution / 2.0f) / length;
+        f32 kz = PI * (2.0f * (f32)m - (f32)resolution) / length;
 
         for (u32 n = 0; n < resolution; n++) {
-            f32 kx = TWO_PI * ((f32)n - resolution / 2.0f) / length;
+            f32 kx = PI * (2.0f * (f32)n - (f32)resolution) / length;
 
             Vector2 h0tk = h0_tilde(make_vector2(kx, kz));
             game_state->h0tk.add(h0tk);
@@ -114,21 +86,22 @@ internal void water_precalculate() {
 }
 
 internal Vector2 h_tilde(Vector2 k, f32 time, Vector2 h0tk, Vector2 h0tmk) {
-    f32 omegakt = sqrtf(GRAVITY * length(k)) * time;
+    f32 w_0 = 2.0f * PI / 200.0f;
+    f32 omegakt = floor(sqrtf(GRAVITY * length(k)) / w_0) * w_0 * time;
 
     Vector2 rot;
     rot.x = cosf(omegakt);
     rot.y = sinf(omegakt);
 
     Vector2 roti;
-    roti.x = rot.x;
-    roti.y = - rot.y;
+    roti.x =  rot.x;
+    roti.y = -rot.y;
 
     Vector2 h0tmk_conj;
     h0tmk_conj.x =  h0tmk.x;
     h0tmk_conj.y = -h0tmk.y;
 
-    return (h0tk * rot) + (h0tmk * roti);
+    return (complex_mult(h0tk, rot) + complex_mult(h0tmk_conj, roti));
 }
 
 internal void _water_update_y(f32 time) {
@@ -141,10 +114,10 @@ internal void _water_update_y(f32 time) {
         u32 index = 0;
 
         for (u32 m = 0; m < resolution; m++) {
-            f32 kz = TWO_PI * ((f32)m - resolution / 2.0f) / length;
+            f32 kz = PI * (2.0f * (f32)m - (f32)resolution) / length;
 
             for (u32 n = 0; n < resolution; n++) {
-                f32 kx = TWO_PI * ((f32)n - resolution / 2.0f) / length;
+                f32 kx = PI * (2.0f * (f32)n - (f32)resolution) / length;
 
                 Vector2 h0tk = game_state->h0tk[index];
                 Vector2 h0tmk = game_state->h0tmk[index];
@@ -185,10 +158,10 @@ internal void _water_update_xz() {
         game_state->dz_i.clear();
 
         for (u32 m = 0; m < resolution; m++) {
-            f32 kz = TWO_PI * ((f32)m - resolution / 2.0f) / length;
+            f32 kz = PI * (2.0f * (f32)m - (f32)resolution) / length;
 
             for (u32 n = 0; n < resolution; n++) {
-                f32 kx = TWO_PI * ((f32)n - resolution / 2.0f) / length;
+                f32 kx = PI * (2.0f * (f32)n - (f32)resolution) / length;
 
                 f32 k_len = sqrtf(kx * kx + kz * kz);
 
@@ -197,10 +170,10 @@ internal void _water_update_xz() {
                     game_state->dz_i.add(V2_ZERO);
                 }
                 else {
-                    Vector2 dx_i = game_state->h_tilde_i[index] * make_vector2(0.0f, -kx / k_len);
+                    Vector2 dx_i = complex_mult(game_state->h_tilde_i[index], make_vector2(0.0f, -kx / k_len));
                     game_state->dx_i.add(dx_i);
 
-                    Vector2 dz_i = game_state->h_tilde_i[index] * make_vector2(0.0f, -kz / k_len);
+                    Vector2 dz_i = complex_mult(game_state->h_tilde_i[index], make_vector2(0.0f, -kz / k_len));
                     game_state->dz_i.add(dz_i);
                 }
 

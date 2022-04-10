@@ -37,16 +37,15 @@ struct GameState {
     Texture water_displacement;
     StaticArray<Vector3> water_displacement_data;
 
-    Texture water_normals;
-    StaticArray<Vector3> water_normals_data;
+    Texture debug_texture;
 
     u32 resolution = 256;
 
-    f32 amplitude = 8.0f;
-    f32 wind_speed = 32.0f;
-    f32 length = 300.0f;    // How much is sampled on the quad (zoom on the displacement)
+    f32 amplitude = 1.0f;   // Wave height cap
+    f32 wind_speed = 64.0f;
+    f32 length = 350.0f;    // How much is sampled on the quad (zoom on the displacement)
     f32 lambda = -1.0f;
-    f32 smoothing = 2.0f;
+    f32 smoothing = 1.0f;
     Vector2 wind_direction = make_vector2(1.0f, 0.0f);
 
     StaticArray<Vector2> h0tk = {};

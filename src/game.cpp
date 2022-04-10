@@ -1,7 +1,10 @@
 internal void init_game() {
     game_state->camera = create_camera((f32)VIRTUAL_WINDOW_W, (f32)VIRTUAL_WINDOW_H);
 
-    translate(game_state->camera.transform, 0.0f, -5.0f, -10.0f);
+    // translate(game_state->camera.transform, 0.0f, -10.0f, -10.0f);
+    game_state->camera.rotation.y = 90.0f;
+    game_state->camera.position.y = 10.0f;
+    game_state->camera.position.z = 10.0f;
 
     // Generate displacement texture
     {
@@ -27,12 +30,11 @@ internal void init_game() {
         game_state->water_displacement.pixel_height = resolution;
     }
 
-    // Generate normals texture
     {
-        u32 water_normals;
-        glGenTextures(1, &water_normals);
+        u32 debug_texture;
+        glGenTextures(1, &debug_texture);
 
-        glBindTexture(GL_TEXTURE_2D, water_normals);
+        glBindTexture(GL_TEXTURE_2D, debug_texture);
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -41,21 +43,62 @@ internal void init_game() {
 
         u32 resolution = game_state->resolution;
 
-        allocate_array_from_block(game_state->water_normals_data, resolution * resolution, &game_state->transient_memory);
-        for (u32 i = 0; i < (resolution * resolution); i++) game_state->water_normals_data.add(V3_ZERO);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, resolution, resolution, 0, GL_RG, GL_FLOAT, nullptr);
 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, resolution, resolution, 0, GL_RGB, GL_FLOAT, game_state->water_normals_data.data);
-
-        game_state->water_normals.handle = water_normals;
-        game_state->water_normals.pixel_width = resolution;
-        game_state->water_normals.pixel_height = resolution;
+        game_state->debug_texture.handle = debug_texture;
+        game_state->debug_texture.pixel_width = resolution;
+        game_state->debug_texture.pixel_height = resolution;
     }
 
     // f32 window_width = game_state->viewport.width * game_state->pixels_to_units;
     // f32 window_height = game_state->viewport.height * game_state->pixels_to_units;
 
     game_state->normal_dist = std::normal_distribution<f32>(0.0f, 1.0f);
-    game_state->water_plane = create_water_plane(20.0f, 20.0f, 100, &game_state->transient_memory);
+    game_state->water_plane = create_water_plane(20.0f, 20.0f, 200, &game_state->transient_memory);
+
+    // Allocate memory for data
+    {
+        u32 resolution = game_state->resolution;
+        u32 resolution_squared = resolution * resolution;
+
+        allocate_array_from_block(game_state->h0tk, resolution_squared, &game_state->transient_memory);
+        allocate_array_from_block(game_state->h0tmk, resolution_squared, &game_state->transient_memory);
+        allocate_array_from_block(game_state->h_tilde, resolution_squared, &game_state->transient_memory);
+        allocate_array_from_block(game_state->h_tilde_i, resolution_squared, &game_state->transient_memory);
+        allocate_array_from_block(game_state->dx, resolution_squared, &game_state->transient_memory);
+        allocate_array_from_block(game_state->dx_i, resolution_squared, &game_state->transient_memory);
+        allocate_array_from_block(game_state->dz, resolution_squared, &game_state->transient_memory);
+        allocate_array_from_block(game_state->dz_i, resolution_squared, &game_state->transient_memory);
+    }
+
+    // FFTW
+    {
+        u32 resolution = game_state->resolution;
+
+        game_state->p_h_tilde = fftwf_plan_dft_2d(
+            resolution,
+            resolution,
+            (fftwf_complex*)(game_state->h_tilde_i.data),
+            (fftwf_complex*)(game_state->h_tilde.data),
+            FFTW_BACKWARD, FFTW_ESTIMATE
+        );
+
+        game_state->p_dx = fftwf_plan_dft_2d(
+            resolution,
+            resolution,
+            (fftwf_complex*)(game_state->dx_i.data),
+            (fftwf_complex*)(game_state->dx.data),
+            FFTW_BACKWARD, FFTW_ESTIMATE
+        );
+
+        game_state->p_dz = fftwf_plan_dft_2d(
+            resolution,
+            resolution,
+            (fftwf_complex*)(game_state->dz_i.data),
+            (fftwf_complex*)(game_state->dz.data),
+            FFTW_BACKWARD, FFTW_ESTIMATE
+        );
+    }
 
     water_precalculate();
 }
@@ -98,39 +141,6 @@ internal void on_window_resize(u32 pixel_width, u32 pixel_height) {
 }
 
 internal void update_and_render_game(f32 dt) {
-    // Camera move
-    // {
-    //     Vector3 move_direction = {};
-
-    //     if (input_state->wasd_pressed[0]) { // W
-    //         if (input_state->shift_pressed) move_direction.z += 1;
-    //         else move_direction.y -= 1;
-    //     }
-
-    //     if (input_state->wasd_pressed[2]) { // S
-    //         if (input_state->shift_pressed) move_direction.z -= 1;
-    //         else move_direction.y += 1;
-    //     }
-
-    //     if (input_state->wasd_pressed[1]) { // A
-    //         move_direction.x += 1;
-    //     }
-
-    //     if (input_state->wasd_pressed[3]) { // D
-    //         move_direction.x -= 1;
-    //     }
-
-    //     move_direction = normalized(move_direction);
-
-    //     f32 move_speed = 5.0f * dt;
-
-    //     Vector3 move_delta = {};
-    //     move_delta.x = move_direction.x * move_speed;
-    //     move_delta.y = move_direction.y * move_speed;
-    //     move_delta.z = move_direction.z * move_speed;
-
-    //     translate(game_state->camera.transform, move_delta.x, move_delta.y, move_delta.z);
-    // }
     camera_handle_input(&game_state->camera, dt);
     camera_update(&game_state->camera);
 
@@ -160,26 +170,54 @@ internal void update_and_render_game(f32 dt) {
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 
-    {
-        glBindTexture(GL_TEXTURE_2D, game_state->water_normals.handle);
-        glTexSubImage2D(
-            GL_TEXTURE_2D,
-            0,
-            0, 0,
-            game_state->water_normals.pixel_width, game_state->water_normals.pixel_height,
-            GL_RGB,
-            GL_FLOAT,
-            game_state->water_normals_data.data
-        );
-        glBindTexture(GL_TEXTURE_2D, 0);
-    }
+    // {
+    //     glBindTexture(GL_TEXTURE_2D, game_state->debug_texture.handle);
+    //     glTexSubImage2D(
+    //         GL_TEXTURE_2D,
+    //         0,
+    //         0, 0,
+    //         game_state->debug_texture.pixel_width, game_state->debug_texture.pixel_height,
+    //         GL_RG,
+    //         GL_FLOAT,
+    //         game_state->h0tk.data
+    //     );
+    //     glBindTexture(GL_TEXTURE_2D, 0);
+    // }
 
     set_shader(ShaderResource::ShaderResource_DEFAULT);
     set_shader_mat4x4("projection", game_state->camera.perspective);
     set_shader_mat4x4("view", game_state->camera.transform);
     set_shader_texture("displacement_map", game_state->water_displacement.handle);
-    // set_shader_texture("normal_map", game_state->water_normals.handle);
+    // set_shader_texture_2("debug_map", game_state->debug_texture.handle);
     draw_mesh(&game_state->water_plane, V3_ZERO);
+
+    // Variables
+    {
+        ImGui::Begin("Variables");
+
+        ImGui::Text("Resolution: %d", game_state->resolution);
+
+        if (ImGui::InputFloat("Amplitude", &game_state->amplitude)) {
+            if (game_state->amplitude < 0.1f) game_state->amplitude = 0.1f;
+        }
+
+        if (ImGui::InputFloat("Wind Speed", &game_state->wind_speed)) {
+            if (game_state->wind_speed < 0.1f) game_state->wind_speed = 0.1f;
+        }
+
+        if (ImGui::InputFloat("Sample Size", &game_state->length)) {
+            if (game_state->length < 1.0f) game_state->length = 1.0f;
+        }
+
+        ImGui::InputFloat("Lambda", &game_state->lambda);
+        ImGui::InputFloat("Smoothing", &game_state->smoothing);
+
+        if (ImGui::Button("Recalculate!")) {
+            water_precalculate();
+        }
+
+        ImGui::End();
+    }
 
     game_state->time += dt;
 }

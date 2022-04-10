@@ -301,7 +301,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prev_instance, PWSTR command_l
     // Allocate global game memory
     {
         game_memory = {};
-        game_memory.bytes = MEGABYTES(8);
+        game_memory.bytes = MEGABYTES(16);
         game_memory.base = (u8 *)VirtualAlloc(0, game_memory.bytes, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
         assert(game_memory.base);
@@ -339,7 +339,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prev_instance, PWSTR command_l
     {
         MemoryArena *transient_memory = &game_state->transient_memory;
         *transient_memory = {};
-        transient_memory->bytes = MEGABYTES(6);
+        transient_memory->bytes = game_memory.bytes - game_memory.used;
         transient_memory->base = (u8 *)_push_to_memory_arena(&game_memory, transient_memory->bytes);
 
         log_print("Assigned %u bytes of transient memory!\n", transient_memory->bytes);
