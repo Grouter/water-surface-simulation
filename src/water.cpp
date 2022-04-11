@@ -132,19 +132,6 @@ internal void _water_update_y(f32 time) {
     }
 
     fftwf_execute(game_state->p_h_tilde);
-
-    {
-        f32 signs[2] = { 1.0f, -1.0f };
-        u32 index = 0;
-
-        for (u32 m = 0; m < resolution; m++) {
-            for (u32 n = 0; n < resolution; n++) {
-                game_state->h_tilde[index] *= signs[(m + n) & 1] / NORM;
-
-                index += 1;
-            }
-        }
-    }
 }
 
 internal void _water_update_xz() {
@@ -184,22 +171,6 @@ internal void _water_update_xz() {
 
     fftwf_execute(game_state->p_dx);
     fftwf_execute(game_state->p_dz);
-
-    {
-        f32 signs[2] = { 1.0f, -1.0f };
-        u32 index = 0;
-
-        f32 lambda = game_state->lambda;
-
-        for (u32 m = 0; m < resolution; m++) {
-            for (u32 n = 0; n < resolution; n++) {
-                game_state->dx[index] *= signs[(m + n) & 1] * lambda / NORM;
-                game_state->dz[index] *= signs[(m + n) & 1] * lambda / NORM;
-
-                index += 1;
-            }
-        }
-    }
 }
 
 internal void water_update(Mesh *water_plane, StaticArray<Vector3> *texture_data, f32 time) {
@@ -207,11 +178,25 @@ internal void water_update(Mesh *water_plane, StaticArray<Vector3> *texture_data
     _water_update_xz();
 
     u32 resolution = game_state->resolution;
-    u32 resolution_squared = resolution * resolution;
 
-    for (u32 index = 0; index < resolution_squared; index++) {
-        (*texture_data)[index].x = game_state->dx[index].x;
-        (*texture_data)[index].y = game_state->h_tilde[index].x;
-        (*texture_data)[index].z = game_state->dz[index].x;
+    f32 signs[2] = { 1.0f, -1.0f };
+    u32 index = 0;
+
+    f32 lambda = game_state->lambda;
+
+    for (u32 m = 0; m < resolution; m++) {
+        for (u32 n = 0; n < resolution; n++) {
+            f32 sign = signs[(m + n) & 1];
+
+            game_state->h_tilde[index] *= sign / NORM;
+            game_state->dx[index] *= sign * lambda / NORM;
+            game_state->dz[index] *= sign * lambda / NORM;
+
+            (*texture_data)[index].r = game_state->dx[index].x;
+            (*texture_data)[index].g = game_state->h_tilde[index].x;
+            (*texture_data)[index].b = game_state->dz[index].x;
+
+            index += 1;
+        }
     }
 }

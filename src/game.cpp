@@ -190,6 +190,9 @@ internal void update_and_render_game(f32 dt) {
     {
         ImGui::Begin("Variables");
 
+        ImGuiIO io = ImGui::GetIO();
+        ImGui::Text("FPS: %f", io.Framerate);
+
         ImGui::Text("Resolution: %d", game_state->resolution);
 
         if (ImGui::InputFloat("Amplitude", &game_state->amplitude)) {
