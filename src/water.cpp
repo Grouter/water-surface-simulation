@@ -204,18 +204,14 @@ internal void _water_update_xz() {
 
 internal void water_update(Mesh *water_plane, StaticArray<Vector3> *texture_data, f32 time) {
     _water_update_y(time);
+    _water_update_xz();
 
     u32 resolution = game_state->resolution;
+    u32 resolution_squared = resolution * resolution;
 
-    u32 index = 0;
-
-    for (u32 m = 0; m < resolution; m++) {
-        for (u32 n = 0; n < resolution; n++) {
-            (*texture_data)[index].x = game_state->dx[index].x;
-            (*texture_data)[index].y = game_state->h_tilde[index].x;
-            (*texture_data)[index].z = game_state->dz[index].x;
-
-            index += 1;
-        }
+    for (u32 index = 0; index < resolution_squared; index++) {
+        (*texture_data)[index].x = game_state->dx[index].x;
+        (*texture_data)[index].y = game_state->h_tilde[index].x;
+        (*texture_data)[index].z = game_state->dz[index].x;
     }
 }

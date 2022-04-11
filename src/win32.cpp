@@ -301,7 +301,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prev_instance, PWSTR command_l
     // Allocate global game memory
     {
         game_memory = {};
-        game_memory.bytes = MEGABYTES(16);
+        game_memory.bytes = MEGABYTES(8);
         game_memory.base = (u8 *)VirtualAlloc(0, game_memory.bytes, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
         assert(game_memory.base);
@@ -325,19 +325,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prev_instance, PWSTR command_l
         log_print("Assigned %u bytes of static game memory!\n", game_memory.used);
     }
 
-    // Assign game's permanent memory
-    {
-        MemoryArena *permanent_memory = &game_state->permanent_memory;
-        *permanent_memory = {};
-        permanent_memory->bytes = MEGABYTES(1);
-        permanent_memory->base = (u8 *)_push_to_memory_arena(&game_memory, permanent_memory->bytes);
-
-        log_print("Assigned %u bytes of permanent memory!\n", permanent_memory->bytes);
-    }
-
     // Assign game's transient memory
     {
-        MemoryArena *transient_memory = &game_state->transient_memory;
+        MemoryArena *transient_memory = &game_state->program_memory;
         *transient_memory = {};
         transient_memory->bytes = game_memory.bytes - game_memory.used;
         transient_memory->base = (u8 *)_push_to_memory_arena(&game_memory, transient_memory->bytes);
@@ -367,8 +357,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prev_instance, PWSTR command_l
     init_renderer();
     load_resources(resources);
     init_game();
-
-    log_print("Game initialized! Permanent memory remaining: %u bytes.\n", (game_state->permanent_memory.bytes - game_state->permanent_memory.used));
 
     MSG message = {};
 

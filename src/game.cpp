@@ -1,7 +1,6 @@
 internal void init_game() {
     game_state->camera = create_camera((f32)VIRTUAL_WINDOW_W, (f32)VIRTUAL_WINDOW_H);
 
-    // translate(game_state->camera.transform, 0.0f, -10.0f, -10.0f);
     game_state->camera.rotation.y = 90.0f;
     game_state->camera.position.y = 10.0f;
     game_state->camera.position.z = 10.0f;
@@ -21,7 +20,7 @@ internal void init_game() {
 
         u32 resolution = game_state->resolution;
 
-        allocate_array_from_block(game_state->water_displacement_data, resolution * resolution, &game_state->transient_memory);
+        allocate_array_from_block(game_state->water_displacement_data, resolution * resolution, &game_state->program_memory);
         for (u32 i = 0; i < (resolution * resolution); i++) game_state->water_displacement_data.add(V3_ZERO);
 
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, resolution, resolution, 0, GL_RGB, GL_FLOAT, game_state->water_displacement_data.data);
@@ -31,6 +30,7 @@ internal void init_game() {
         game_state->water_displacement.pixel_height = resolution;
     }
 
+    // Generate debug texture
     {
         u32 debug_texture;
         glGenTextures(1, &debug_texture);
@@ -51,25 +51,22 @@ internal void init_game() {
         game_state->debug_texture.pixel_height = resolution;
     }
 
-    // f32 window_width = game_state->viewport.width * game_state->pixels_to_units;
-    // f32 window_height = game_state->viewport.height * game_state->pixels_to_units;
-
     game_state->normal_dist = std::normal_distribution<f32>(0.0f, 1.0f);
-    game_state->water_plane = create_water_plane(20.0f, 20.0f, 200, &game_state->transient_memory);
+    game_state->water_plane = create_water_plane(20.0f, 20.0f, 200, &game_state->program_memory);
 
     // Allocate memory for data
     {
         u32 resolution = game_state->resolution;
         u32 resolution_squared = resolution * resolution;
 
-        allocate_array_from_block(game_state->h0tk, resolution_squared, &game_state->transient_memory);
-        allocate_array_from_block(game_state->h0tmk, resolution_squared, &game_state->transient_memory);
-        allocate_array_from_block(game_state->h_tilde, resolution_squared, &game_state->transient_memory);
-        allocate_array_from_block(game_state->h_tilde_i, resolution_squared, &game_state->transient_memory);
-        allocate_array_from_block(game_state->dx, resolution_squared, &game_state->transient_memory);
-        allocate_array_from_block(game_state->dx_i, resolution_squared, &game_state->transient_memory);
-        allocate_array_from_block(game_state->dz, resolution_squared, &game_state->transient_memory);
-        allocate_array_from_block(game_state->dz_i, resolution_squared, &game_state->transient_memory);
+        allocate_array_from_block(game_state->h0tk, resolution_squared, &game_state->program_memory);
+        allocate_array_from_block(game_state->h0tmk, resolution_squared, &game_state->program_memory);
+        allocate_array_from_block(game_state->h_tilde, resolution_squared, &game_state->program_memory);
+        allocate_array_from_block(game_state->h_tilde_i, resolution_squared, &game_state->program_memory);
+        allocate_array_from_block(game_state->dx, resolution_squared, &game_state->program_memory);
+        allocate_array_from_block(game_state->dx_i, resolution_squared, &game_state->program_memory);
+        allocate_array_from_block(game_state->dz, resolution_squared, &game_state->program_memory);
+        allocate_array_from_block(game_state->dz_i, resolution_squared, &game_state->program_memory);
     }
 
     // FFTW
@@ -102,6 +99,13 @@ internal void init_game() {
     }
 
     water_precalculate();
+
+    log_print(
+        "Game memory: %d / %d (%f)\n",
+        game_state->program_memory.used,
+        game_state->program_memory.bytes,
+        ((f32)game_state->program_memory.used / (f32)game_state->program_memory.bytes) * 100.0f
+    );
 }
 
 internal void on_window_created(i32 pixel_width, i32 pixel_height) {
@@ -144,16 +148,6 @@ internal void on_window_resize(u32 pixel_width, u32 pixel_height) {
 internal void update_and_render_game(f32 dt) {
     camera_handle_input(&game_state->camera, dt);
     camera_update(&game_state->camera);
-
-    // Draw axes
-    {
-        // f32 axis_length = 500.0f;
-        // f32 axis_width = 0.01f;
-
-        // draw_cube(V3_ZERO, make_vector3(axis_length, axis_width, axis_width), Color_RED);
-        // draw_cube(V3_ZERO, make_vector3(axis_width, axis_length, axis_width), Color_GREEN);
-        // draw_cube(V3_ZERO, make_vector3(axis_width, axis_width, axis_length), Color_BLUE);
-    }
 
     water_update(&game_state->water_plane, &game_state->water_displacement_data, game_state->time);
 
@@ -220,6 +214,7 @@ internal void update_and_render_game(f32 dt) {
         ImGui::End();
     }
 
+    // @Todo this will cause errors after a while (precision errors)
     game_state->time += dt;
 }
 
